@@ -30,7 +30,7 @@ __copyright__ = "<2023> <University Southern Bohemia> <Czech Technical Universit
 __credits__ = ["Ivo Bukovsky"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz"]
 __status__ = "alpha"
@@ -49,9 +49,9 @@ def aisle(weights, alphas, oles):  # Wm ... recent window of weights including t
     weights : numpy.array
         Weights to be evaluated with Learning Entropy algorithm
     alphas : numpy.array
-        blab
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
     oles : numpy.array
-        blab
+        Orders of learning entropy evaluation.
     """
     weights = np.array(weights)
     alphas = np.array(alphas)
@@ -62,16 +62,16 @@ def aisle(weights, alphas, oles):  # Wm ... recent window of weights including t
     nalpha = len(alphas)
     ea = np.zeros(len(oles))
     i = 0
-    for ole in range(np.max(oles) + 1):
-        if ole == oles[i]:  # assures the corresponding difference of Wm
+    for ole in range(np.min(oles),np.max(oles)+1):
+        if ole == oles[i]:
             absdw = np.abs(weights[-1, :])  # very last updated weights
             meanabsdw = np.mean(abs(weights[0:weights.shape[0] - 1, :]), 0)
             Nalpha = 0
             for alpha in alphas:
                 Nalpha += np.sum(absdw > alpha * meanabsdw)
             ea[i] = float(Nalpha) / (nw * nalpha)
-            i += 1
-        weights = weights[1:, :] - weights[0:(np.shape(weights)[0] - 1), :]  # difference Wm
+            i = i + 1
+        weights = weights[1:, :] - weights[0: - 1, :]  # difference Wm
     return (ea)
 
 
