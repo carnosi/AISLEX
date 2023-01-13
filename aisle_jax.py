@@ -32,14 +32,13 @@ __copyright__ = "<2023> <University Southern Bohemia> <Czech Technical Universit
 __credits__ = ["Ivo Bukovsky"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.1"
+__version__ = "1.0.3"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz"]
 __status__ = "alpha"
 
 __python__ = "3.8.0"
 
-from functools import partial
 import jax
 import jax.numpy as jnp
 from jax import jit
@@ -47,7 +46,24 @@ from jax import jit
 
 @jit
 def aisle(weights, alphas, oles):
-    """_summary_
+    """
+    Approximate Individual Sample Learning Entropy - accelerated with JAX framework.
+    Should be run-able on CPU / GPU / TPU as long as JAX supports it.
+    Calculations are limited to fp32 due to lib limitations.
+
+    Parameters
+    ----------
+    weights : iterable
+        Weights those should be evalueted with Learning Entropy
+    alphas : iterable
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    oles : iterable
+        Orders of learning entropy evaluation.
+
+    Returns
+    -------
+    ndarray
+        Evaluated learning entropy for all oles.
     """
     # Convert input arrays to jax arrays
     weights = jnp.array(weights)
@@ -60,7 +76,7 @@ def aisle(weights, alphas, oles):
     nw = weights.shape[1]
     # Get the amount of alphas to evaluate
     nalpha = alphas.shape[0]
-    # Get scaler
+    # Get scaler, its same for all oles, no need to recalc it
     scaler = nw * nalpha
     # LE weights evaluation
     ea = __ole_loop__(weights, alphas, oles, scaler)
@@ -70,85 +86,132 @@ def aisle(weights, alphas, oles):
 @jit
 def __ole_loop__(weights, alphas, oles, scaler):
     """
-    i = 0
-    for ole in range(np.max(oles) + 1):
-        if ole == oles[i]:  # assures the corresponding difference of Wm
-            ea = __ole__(weights, alphas, scaler, eval_weights)
-            EA[i] = ea
-            i += 1
-        weights = weights[1:, :] - weights[0:(np.shape(weights)[0] - 1), :]  # difference Wm
-    return (ea)
+    Evaluate all oles in a loop
+
+    Parameters
+    ----------
+    weights : jax.numpy.array
+        Weights those should be evalueted with Learning Entropy
+    alphas : jax.numpy.array
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    oles : jax.numpy.array
+        Orders of learning entropy evaluation.
+    scaler : jax.fp32
+        Scaler for OLE/Alpha evaluated weights
+
+    Returns
+    -------
+    ndarray
+        Evaluated learning entropy for all oles.
     """
+
     # Prepare the output array of learning entropy. Size matches LE orders.
     ea = jnp.zeros(oles.shape[0])
-    # loop over OLES
+    # loop over all OLES and get learning entropy
     pos = 0
     for ole in oles:
-        one_ea = __ole__(weights, alphas, oles, scaler)
+        # Calculate dws for given OLE order
+        ole_weights, _, _ = __weight_ole__(weights, ole)
+        # Evaluate learning entropy for given OLE
+        one_ea = __ole__(ole_weights, alphas, scaler, ole)
+        # Save it to array and move to the next one
         ea = ea.at[pos].set(one_ea)
         pos = pos + 1
     return ea
 
 @jit
-def __ole__(weights, alphas, oles, scaler):
+def __ole__(weights, alphas, scaler, ole):
     """
-    Single OLE evaluation in LE algorithm
-    Original code:
-        absdw = np.abs(weights[-1, :])  # very last updated weights
-        meanabsdw = np.mean(abs(weights[0:weights.shape[0] - 1, :]), 0)
-        Nalpha = __alpha_loop__(alphas, absdw, meanabsdw)
-        ea = float(Nalpha) / (nw * nalpha)
+    Single OLE evaluation for given weights and alphas
 
     Parameters
     ----------
-    weights : _type_
-        _description_
-    alphas : _type_
-        _description_
-    scaler : _type_
-        _description_
+    weights : jax.numpy.array
+        Weights those should be evalueted with Learning Entropy
+    alphas : jax.numpy.array
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    scaler : jax.fp32
+        Scaler for OLE/Alpha evaluated weights
+    ole : jax.int32
+        Single OLE which should be evaluated
 
     Returns
     -------
-    _type_
-        _description_
-    """
-    """    runs = jnp.arange(0, ole, 1, jnp.int16)
-    for nrun in runs:
-        weights = weights[1:, :] - weights[0:-1, :]
-    """
-    absdw = jnp.abs(weights[-1, :])
-    meanabsdw = jnp.mean(jnp.abs(weights[0:- 1, :]), 0)
-    Nalpha = __alpha_loop__(alphas, absdw, meanabsdw)
-    ea = jnp.float32(Nalpha) / (scaler)
+    jax.fp32
+        Single Learning Entropy output for given OLE
 
+    NOTICE
+    ------
+    meanabsdw is not calculated EXACT due to jax array manipulation limitations.
+    Depending on the order of OLE last values contain 0s. These values should be sliced
+    however JAX does not support dynamically sized arrays without large overhang.
+    Error is very low tho, can be ignored for now.
+    """
+    # Get the latest dw change for given weights
+    absdw = jnp.abs(weights[-ole-1, :])
+    # Get mean weight changes from all weights. Compared to native python this is not EXACT and might cause unexpected values when len(weights)<10
+    # Optimal solution would be to select weights[:-ole-1, :] which is not possible as its dynamic array
+    meanabsdw = jnp.mean(jnp.abs(weights), 0)
+    # Evaluate all alphas as sensitivity
+    Nalpha = __alpha_loop__(alphas, absdw, meanabsdw)
+    # Calculate learning entropy from alpha evaluation and scaler
+    ea = jnp.float32(Nalpha) / (scaler)
     return ea
 
 @jit
 def __alpha_loop__(alphas, absdw, meanabsdw):
     """
-    Loop of alphas in LE algorithm which should be flattened by JAX.
-    Original loop:
-                Nalpha = 0
-                for alpha in alphas:
-                     Nalpha += np.sum(absdw > alpha * meanabsdw)
+    Evaluate all alphas for given latest weight change and mean weight behavior in provided window
 
     Parameters
     ----------
-    start : _type_
-        _description_
-    stop : _type_
-        _description_
-    init_val : _type_
-        _description_
+    alphas : jax.numpy.array
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    absdw : jax.numpy.array
+        The latest dw change for given weights.
+    meanabsdw : jax.numpy.array
+        Mean weight changes from all weights.
 
     Returns
     -------
-    _type_
-        _description_
+    ndarray
+        Evaluated alphas
     """
+
     Nalpha = 0
     for alpha in alphas:
         temp = jnp.sum(absdw > alpha * meanabsdw)
         Nalpha = Nalpha + temp
     return Nalpha
+
+@jit
+def __weight_ole__(weights, ole):
+    """
+    Weight changes in accordance with different specified OLEs
+
+    Parameters
+    ----------
+    weights : jax.numpy.array
+        Weights those should be evalueted with Learning Entropy
+    ole : jax.int32
+        Numeric description position of ole. Changes weight change
+    """
+    def cond(arg):
+        _ , step, ole = arg
+        return (step < ole)
+
+    def body(arg):
+        weights, step, ole = arg
+        temp_weights = weights[1:, :] - weights[0:-1, :]
+        weights = jax.lax.dynamic_update_slice(weights, temp_weights, (0, 0))
+        weights = weights.at[-1, :].set(0)
+        return (weights, step + 1, ole)
+
+    return jax.lax.while_loop(
+        cond,
+        body,
+        (weights, 0, ole)
+    )
+
+if __name__ == "__main__":
+    raise IOError("aisle_jax.py is not meant to be run as a script")
