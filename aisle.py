@@ -30,16 +30,16 @@ __copyright__ = "<2023> <University Southern Bohemia> <Czech Technical Universit
 __credits__ = ["Ivo Bukovsky"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.1"
+__version__ = "1.0.3"
 __maintainer__ = ["Ondrej Budik"]
-__email__ = ["obudik@prf.jcu.cz"]
+__email__ = ["obudik@prf.jcu.cz", "ondrej.budik@fs.cvut.cz"]
 __status__ = "alpha"
 
 __python__ = "3.8.0"
 
 import numpy as np
 
-def aisle(weights, alphas, oles):  # Wm ... recent window of weights including the very last weight updates
+def aisle(weights, alphas, oles):
     """
     Approximate Individual Sample Learning Entropy
     Anomaly detection based on learning entropy as published by Ivo Bukovsky.
@@ -52,34 +52,44 @@ def aisle(weights, alphas, oles):  # Wm ... recent window of weights including t
         Sensitivity of learning entropy. List of various sensitivities to evaluate.
     oles : numpy.array
         Orders of learning entropy evaluation.
+
+    Returns
+    -------
+    ndarray
+        evaluated learning entropy for all oles.
     """
+    # Convert inputs to numpy arrays for unified processing
     weights = np.array(weights)
     alphas = np.array(alphas)
     oles = np.array(oles)
 
+    # Make sure that oles shape is correct
     oles = oles.reshape(-1)
+    # Get number of weights
     nw = weights.shape[1]
-    nalpha = len(alphas)
+    # Get number of alphas
+    nalpha = alphas.shape[0]
+    # Prepare memory space for learning entropy
     ea = np.zeros(len(oles))
+    # Counter for LE position
     i = 0
-    for ole in range(np.min(oles),np.max(oles)+1):
+    # Iterate over all oles
+    for ole in range(0, np.max(oles)+1):
         if ole == oles[i]:
-            absdw = np.abs(weights[-1, :])  # very last updated weights
+            # Get latest weight change
+            absdw = np.abs(weights[-1, :])
+            # Get mean weight changes for provided weight window
             meanabsdw = np.mean(abs(weights[0:weights.shape[0] - 1, :]), 0)
+            # Evaluate alphas
             Nalpha = 0
             for alpha in alphas:
                 Nalpha += np.sum(absdw > alpha * meanabsdw)
+            # Save learning entropy
             ea[i] = float(Nalpha) / (nw * nalpha)
             i = i + 1
-        weights = weights[1:, :] - weights[0: - 1, :]  # difference Wm
+        # Prepare weights for next ole
+        weights = weights[1:, :] - weights[0: - 1, :]
     return (ea)
 
-
-"""
-def Learning_entropy(col_W,OLE,L,p,memory):
-    OLEs = np.array([1, OLE])
-    Wm = np.zeros((memory, col_W.shape[0]))
-    EA = np.zeros((L + p, OLEs.shape[0]))
-    EAP = np.zeros((L + p, OLEs.shape[0]))
-    return Wm,EA,EAP,OLEs
-"""
+if __name__ == "__main__":
+    raise IOError("aisle.py is not meant to run as a script")

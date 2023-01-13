@@ -1,2 +1,4 @@
 .honu_weights.csv
 __pycache__/aisle.cpython-310.pyc
+__pycache__/aisle_jax.cpython-310.pyc
+
