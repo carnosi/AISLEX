@@ -23,14 +23,12 @@ __doc__ using Sphnix Style
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-##Learning entropy Author - IVO BUKOVSKY
-
 __author__ = "Ondrej Budik"
-__copyright__ = "<2023> <University Southern Bohemia> <Czech Technical University>"
-__credits__ = ["Ivo Bukovsky"]
+__copyright__ = "<2023> <University Southern Bohemia>"
+__credits__ = ["Ivo Bukovsky", "Czech Technical University"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.3"
+__version__ = "1.0.5"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz", "ondrej.budik@fs.cvut.cz"]
 __status__ = "alpha"
@@ -90,6 +88,41 @@ def aisle(weights, alphas, oles):
         # Prepare weights for next ole
         weights = weights[1:, :] - weights[0: - 1, :]
     return (ea)
+
+def aisle_window(window, weights, alphas, oles):
+    """
+    Evaluation of Approximate Individual Sample Learning Entropy
+     with selected window over provided weights data.
+
+    Parameters
+    ----------
+    window : int
+        Window size to be evaluated with Learning Entropy
+    weights : numpy.array
+        Weights to be evaluated with Learning Entropy algorithm
+    alphas : numpy.array
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    oles : numpy.array
+        Orders of learning entropy evaluation.
+
+    Returns
+    -------
+    ndarray
+        Evaluation output for Learning Entropy for given settings.
+    """
+
+    # Convert inputs to numpy arrays for unified processing
+    weights = np.array(weights)
+    alphas = np.array(alphas)
+    oles = np.array(oles)
+
+    # Prepare holder for learning entropy window shift output
+    ea_windowed = np.zeros((weights.shape[0], oles.shape[0]))
+    # Iterate over weights of a window
+    for shift in range(window, weights.shape[0]):
+        # Evaluate learning entropy for given weindow
+        ea_windowed[shift, :] = aisle(weights[shift-window:shift], alphas, oles)
+    return ea_windowed
 
 if __name__ == "__main__":
     raise IOError("aisle.py is not meant to run as a script")

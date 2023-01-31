@@ -28,11 +28,11 @@ __doc__ using Sphnix Style
 # THE SOFTWARE.
 
 __author__ = "Ondrej Budik"
-__copyright__ = "<2023> <University Southern Bohemia> <Czech Technical University>"
-__credits__ = ["Ivo Bukovsky"]
+__copyright__ = "<2023> <University Southern Bohemia>"
+__credits__ = ["Ivo Bukovsky", "Czech Technical University"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz"]
 __status__ = "alpha"
@@ -41,15 +41,16 @@ __python__ = "3.8.0"
 
 import jax
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, vmap
+from functools import partial
 
 
 @jit
 def aisle(weights, alphas, oles):
     """
     Approximate Individual Sample Learning Entropy - accelerated with JAX framework.
-    Should be run-able on CPU / GPU / TPU as long as JAX supports it.
-    Calculations are limited to fp32 due to lib limitations.
+    Should be run-able on CPUs / GPUs / TPUs as long as JAX supports it.
+    Calculations are limited to fp32 due to lib limitations, should not really change anything.
 
     Parameters
     ----------
@@ -80,6 +81,9 @@ def aisle(weights, alphas, oles):
     scaler = nw * nalpha
     # LE weights evaluation
     ea = __ole_loop__(weights, alphas, oles, scaler)
+
+    # Unification of output. Usefull for window processing
+    ea = ea.reshape(1, -1)
 
     return ea
 
@@ -145,12 +149,12 @@ def __ole__(weights, alphas, scaler, ole):
     meanabsdw is not calculated EXACT due to jax array manipulation limitations.
     Depending on the order of OLE last values contain 0s. These values should be sliced
     however JAX does not support dynamically sized arrays without large overhang.
-    Error is very low tho, can be ignored for now.
+    Error is very low as long as window is not too small, can be ignored for now.
     """
     # Get the latest dw change for given weights
     absdw = jnp.abs(weights[-ole-1, :])
     # Get mean weight changes from all weights. Compared to native python this is not EXACT and might cause unexpected values when len(weights)<10
-    # Optimal solution would be to select weights[:-ole-1, :] which is not possible as its dynamic array
+    # Optimal solution would be to select weights[:-ole-1, :] which is not possible as its dynamic array and it would increase calc time
     meanabsdw = jnp.mean(jnp.abs(weights), 0)
     # Evaluate all alphas as sensitivity
     Nalpha = __alpha_loop__(alphas, absdw, meanabsdw)
@@ -195,6 +199,11 @@ def __weight_ole__(weights, ole):
         Weights those should be evalueted with Learning Entropy
     ole : jax.int32
         Numeric description position of ole. Changes weight change
+
+    Returns
+    -------
+    ndarray
+        weights in accordance to ole
     """
     def cond(arg):
         _ , step, ole = arg
@@ -212,6 +221,69 @@ def __weight_ole__(weights, ole):
         body,
         (weights, 0, ole)
     )
+
+@partial(jit, static_argnums=(0,))
+def aisle_window(window, weights, alphas, oles):
+    """
+    Evaluation of Approximate Individual Sample Learning Entropy
+     with selected window over provided weights data.
+
+    Parameters
+    ----------
+    window : int
+        Window size to be evaluated with Learning Entropy
+    weights : numpy.array
+        Weights to be evaluated with Learning Entropy algorithm
+    alphas : numpy.array
+        Sensitivity of learning entropy. List of various sensitivities to evaluate.
+    oles : numpy.array
+        Orders of learning entropy evaluation.
+
+    Returns
+    -------
+    ndarray
+        Evaluation output for Learning Entropy for given settings.
+    """
+
+    # Convert input arrays to jax arrays
+    weights = jnp.array(weights)
+    alphas = jnp.array(alphas)
+    oles = jnp.array(oles)
+
+    # Prepare holder for learning entropy window shift output
+    ea_windowed = jnp.zeros((weights.shape[0], oles.shape[0]))
+
+    # Prepare windows to be processed
+    weight_windows = moving_window(weights, window)
+
+    def body(shift, arg):
+        ea_windowed, weight_windows = arg
+        ea = aisle(weight_windows[shift], alphas, oles)
+        ea_windowed = jax.lax.dynamic_update_slice(ea_windowed, ea, (shift+window, 0))
+        return (ea_windowed, weight_windows)
+
+    ea_windowed, _, = jax.lax.fori_loop(0, weight_windows.shape[0], body, (ea_windowed, weight_windows))
+
+    return ea_windowed
+
+@partial(jit, static_argnums=(1,))
+def moving_window(array, size):
+    """Creates moving average arrays to be processed. Instead of slicing one array, each flattened loop gets its portion of data.
+
+    Parameters
+    ----------
+    array : jax.numpy.array
+        Input array from which moving windows should be generated
+    size : int
+        Size of moving window
+
+    Returns
+    -------
+    jax.numpy.array
+        Array containing all moving windows.
+    """
+    starts = jnp.arange(array.shape[0] - size + 1)
+    return vmap(lambda start: jax.lax.dynamic_slice(array, (start, 0), (size, array.shape[1])))(starts)
 
 if __name__ == "__main__":
     raise IOError("aisle_jax.py is not meant to be run as a script")
