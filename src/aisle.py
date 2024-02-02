@@ -68,7 +68,7 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarr
             # Get latest weight change
             absdw = np.abs(weights[-1, :])
             # Get mean weight changes for provided weight window
-            meanabsdw = np.mean(abs(weights[0 : weights.shape[0] - 1, :]), 0)
+            meanabsdw = np.mean(abs(weights[0:-1, :]), 0)
             # Evaluate alphas
             n_alpha = 0
             for alpha in alphas:
@@ -81,9 +81,7 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarr
     return ea
 
 
-def aisle_window(
-    window: int, weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray
-) -> np.ndarray:
+def aisle_window(window: int, weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarray:
     """Evaluate Approximate Individual Sample Learning Entropy over a moving window on the provided weights.
 
     This function calculates the Learning Entropy (LE) for each sub-window of the given size, effectively
