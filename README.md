@@ -18,8 +18,9 @@ The **AIXLES** package allows the user to perform the following tasks:
 * Easy start usage examples
 
 ## Sample Usage
-* [Example 0 artificial data anomaly detection](./examples/Example_0_artificial_data_linear_neuron.ipynb)
-* [Example 1 ECG anomaly detection](./examples/Example_1_ECG_anomaly_detection.ipynb)
+* [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
+* [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
+* [Example 2 ECG Ventricual Tachycardia](./examples/Example_2_ECG_Ventricual_Tachycardia.ipynb)
 
 ## Appliaction Examples
 This repository is builing on top of many published papers, for sample usage you can explore any of the below:
