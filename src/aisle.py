@@ -120,5 +120,5 @@ def aisle_window(window: int, weights: np.ndarray, alphas: np.ndarray, oles: np.
 
 
 if __name__ == "__main__":
-    msg = "The aisle.py is not meant to be run as a script. Do see examples for propper usage."
-    raise OSError(msg)
+    MSG = "The aisle.py is not meant to be run as a script. Do see examples for propper usage."
+    raise OSError(MSG)

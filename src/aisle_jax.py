@@ -269,5 +269,5 @@ def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     )(starts)
 
 if __name__ == "__main__":
-    msg = "aisle_jax.py is not meant to be run as a script. Do see examples for propper usage."
-    raise OSError(msg)
+    MSG = "aisle_jax.py is not meant to be run as a script. Do see examples for propper usage."
+    raise OSError(MSG)
