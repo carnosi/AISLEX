@@ -13,7 +13,7 @@ __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz", "ondrej.budik@fs.cvut.cz"]
 __status__ = "beta"
 
-__python__ = "3.8.0"
+__python__ = "3.9.0"
 
 import numpy as np
 
