@@ -26,7 +26,7 @@ import numpy as np
 from jax import jit, vmap
 
 
-@jit
+@partial(jit, static_argnums=(1, 2))
 def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> jnp.ndarray:
     """Computes the Approximate Individual Sample Learning Entropy (AISLE) using the JAX framework.
 
@@ -61,13 +61,10 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> jnp.ndar
     # LE weights evaluation
     ea = _ole_loop_(weights, alphas, oles, scaler)
 
-    # Unification of output. Usefull for window processing
-    ea = ea.reshape(1, -1)
-
     return ea
 
 
-@jit
+@partial(jit, static_argnums=(1, 2, 3))
 def _ole_loop_(
     weights: jnp.ndarray,
     alphas: jnp.ndarray,
@@ -105,7 +102,7 @@ def _ole_loop_(
     return ea
 
 
-@jit
+@partial(jit, static_argnums=(2,))
 def _ole_(
     weights: jnp.ndarray,
     alphas: jnp.ndarray,
@@ -126,30 +123,22 @@ def _ole_(
 
     Returns:
         A float representing the LE output for the given OLE.
-
-    Notice:
-        Mean absolute dw is not calculated exactly due to JAX array manipulation limitations. Depending on the
-        OLE order, last values may contain zeros. Ideally, these values should be sliced; however, JAX does
-        not support dynamically sized arrays without significant overhead. The error is minimal as long as the
-        window is not too small (<10) and can typically be ignored.
-
-    The function computes the absolute weight changes and the mean absolute weight changes, evaluates the
-    sensitivity using all alphas, and calculates the LE from the alpha evaluation and the scaler.
     """
     # Get the latest dw change for given weights
     absdw = jnp.abs(weights[-ole - 1, :])
-    # Get mean weight changes from all weights. Compared to native python this is not EXACT and might cause
-    # unexpected values when len(weights)<10. Optimal solution would be to select weights[:-ole-1, :] which
-    # is not possible as its dynamic array and it would increase calc time.
-    meanabsdw = jnp.nanmean(jnp.abs(weights), 0)
+
+    # Get mean dw excluding the nans
+    meanabsdw = jnp.nanmean(jnp.abs(weights), axis=0)
+
     # Evaluate all alphas as sensitivity
     n_alpha = _alpha_loop_(alphas, absdw, meanabsdw)
+
     # Calculate learning entropy from alpha evaluation and scaler
     ea = jnp.float32(n_alpha) / (scaler)
     return ea
 
 
-@jit
+@partial(jit, static_argnums=(0,))
 def _alpha_loop_(alphas: jnp.ndarray, absdw: jnp.ndarray, meanabsdw: jnp.ndarray) -> jnp.ndarray:
     """Evaluates all alpha values for the given weight change and mean weight behavior in a specified window.
 
@@ -203,7 +192,7 @@ def _weight_ole_(weights: jnp.ndarray, ole: int, step: int) -> jnp.ndarray:
     return jax.lax.while_loop(cond, body, (weights, step, ole))
 
 
-@partial(jit, static_argnums=(0,))
+@partial(jit, static_argnums=(0, 2, 3))
 def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: jnp.ndarray) -> jnp.ndarray:
     """Evaluates Approximate Individual Sample Learning Entropy (AISLE) over a selected window.
 
@@ -232,15 +221,11 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     # Prepare windows to be processed
     weight_windows = moving_window(weights, window)
 
-    def body(shift, arg):
-        ea_windowed = arg
-        ea = aisle(weight_windows[shift], alphas, oles)
-        ea_windowed = jax.lax.dynamic_update_slice(
-            ea_windowed, ea, (shift + window, 0)
-        )  # not best, but it works
-        return ea_windowed
+    # Vectorize aisle function to operate on batches of weight_windows
+    vectorized_aisle = jax.vmap(aisle, in_axes=(0, None, None), out_axes=0)
 
-    ea_windowed = jax.lax.fori_loop(0, weight_windows.shape[0], body, (ea_windowed))
+    # Compute the results for all windows in a vectorized manner
+    ea_windowed = vectorized_aisle(weight_windows, alphas, oles)
 
     return ea_windowed
 
