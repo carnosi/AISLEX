@@ -68,7 +68,7 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarr
             # Get latest weight change
             absdw = np.abs(weights[-1, :])
             # Get mean weight changes for provided weight window
-            meanabsdw = np.mean(abs(weights[0:-1, :]), 0)
+            meanabsdw = np.mean(abs(weights[:-1, :]), axis=0)
             # Evaluate alphas
             n_alpha = 0
             for alpha in alphas:

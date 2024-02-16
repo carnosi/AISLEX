@@ -93,11 +93,12 @@ def _ole_loop_(
     ea = jnp.zeros(oles.shape[0])
     # loop over all OLES and get learning entropy
     pos = 0
+    step = 0
     for ole in oles:
         # Calculate dws for given OLE order. Oles usually are not many, no need to recompile for now.
-        ole_weights, _, _ = _weight_ole_(weights, ole)
+        weights, step, _ = _weight_ole_(weights, ole, step)
         # Evaluate learning entropy for given OLE
-        one_ea = _ole_(ole_weights, alphas, scaler, ole)
+        one_ea = _ole_(weights, alphas, scaler, ole)
         # Save it to array and move to the next one
         ea = ea.at[pos].set(one_ea)
         pos = pos + 1
@@ -140,7 +141,7 @@ def _ole_(
     # Get mean weight changes from all weights. Compared to native python this is not EXACT and might cause
     # unexpected values when len(weights)<10. Optimal solution would be to select weights[:-ole-1, :] which
     # is not possible as its dynamic array and it would increase calc time.
-    meanabsdw = jnp.mean(jnp.abs(weights), 0)
+    meanabsdw = jnp.nanmean(jnp.abs(weights), 0)
     # Evaluate all alphas as sensitivity
     n_alpha = _alpha_loop_(alphas, absdw, meanabsdw)
     # Calculate learning entropy from alpha evaluation and scaler
@@ -149,9 +150,7 @@ def _ole_(
 
 
 @jit
-def _alpha_loop_(
-    alphas: jnp.ndarray, absdw: jnp.ndarray, meanabsdw: jnp.ndarray
-) -> jnp.ndarray:
+def _alpha_loop_(alphas: jnp.ndarray, absdw: jnp.ndarray, meanabsdw: jnp.ndarray) -> jnp.ndarray:
     """Evaluates all alpha values for the given weight change and mean weight behavior in a specified window.
 
     This function iterates through each alpha value, calculating the sensitivity of the learning entropy.
@@ -164,16 +163,17 @@ def _alpha_loop_(
     Returns:
         A jax.numpy array representing the evaluated alpha values.
     """
+
     def body(shift, arg):
         n_alpha = arg
-        n_alpha = n_alpha + jnp.sum(absdw > alphas[shift] * meanabsdw)
+        n_alpha = n_alpha + jnp.nansum(absdw > alphas[shift] * meanabsdw)
         return n_alpha
 
     return jax.lax.fori_loop(0, alphas.shape[0], body, (0))
 
 
 @jit
-def _weight_ole_(weights: jnp.ndarray, ole: jnp.ndarray) -> jnp.ndarray:
+def _weight_ole_(weights: jnp.ndarray, ole: int, step: int) -> jnp.ndarray:
     """Computes weight changes according to different specified Orders of Learning Entropy (OLEs).
 
     This function iterates through the weights array, adjusting the weights based on the specified order of
@@ -183,10 +183,12 @@ def _weight_ole_(weights: jnp.ndarray, ole: jnp.ndarray) -> jnp.ndarray:
         weights: A 2D jax.numpy array where each row represents the weights at a particular iteration of the
                 learning process.
         ole: An integer indicating the order of Learning Entropy, which dictates the weight change process.
+        step: An integer indicating at which shift state are the weights.
 
     Returns:
         A 2D jax.numpy array of adjusted weights in accordance with the specified OLE.
     """
+
     def cond(arg):
         _, step, ole = arg
         return step < ole
@@ -195,16 +197,14 @@ def _weight_ole_(weights: jnp.ndarray, ole: jnp.ndarray) -> jnp.ndarray:
         weights, step, ole = arg
         temp_weights = weights[1:, :] - weights[0:-1, :]
         weights = jax.lax.dynamic_update_slice(weights, temp_weights, (0, 0))
-        weights = weights.at[-1, :].set(0)
+        weights = weights.at[-1, :].set(jnp.nan)
         return (weights, step + 1, ole)
 
-    return jax.lax.while_loop(cond, body, (weights, 0, ole))
+    return jax.lax.while_loop(cond, body, (weights, step, ole))
 
 
 @partial(jit, static_argnums=(0,))
-def aisle_window(
-    window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: jnp.ndarray
-) -> jnp.ndarray:
+def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: jnp.ndarray) -> jnp.ndarray:
     """Evaluates Approximate Individual Sample Learning Entropy (AISLE) over a selected window.
 
     This function slides a window over the provided weights, computing the Learning Entropy for each window
@@ -264,9 +264,8 @@ def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     `jax.lax.dynamic_slice`, to efficiently extract each window segment from the input array.
     """
     starts = jnp.arange(array.shape[0] - size + 1)
-    return vmap(
-        lambda start: jax.lax.dynamic_slice(array, (start, 0), (size, array.shape[1]))
-    )(starts)
+    return vmap(lambda start: jax.lax.dynamic_slice(array, (start, 0), (size, array.shape[1])))(starts)
+
 
 if __name__ == "__main__":
     MSG = "aisle_jax.py is not meant to be run as a script. Do see examples for propper usage."
