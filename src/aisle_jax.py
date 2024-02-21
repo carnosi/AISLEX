@@ -128,7 +128,7 @@ def _ole_(
     absdw = jnp.abs(weights[-ole - 1, :])
 
     # Get mean dw excluding the nans
-    meanabsdw = jnp.nanmean(jnp.abs(weights), axis=0)
+    meanabsdw = jnp.nanmean(jnp.abs(weights[:-1, :]), axis=0)
 
     # Evaluate all alphas as sensitivity
     n_alpha = _alpha_loop_(alphas, absdw, meanabsdw)
@@ -216,7 +216,7 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     oles = jnp.array(oles)
 
     # Prepare holder for learning entropy window shift output
-    ea_windowed = jnp.zeros((weights.shape[0], oles.shape[0]))
+    window_zeros = jnp.zeros((window, oles.shape[0]))
 
     # Prepare windows to be processed
     weight_windows = moving_window(weights, window)
@@ -224,13 +224,16 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     # Vectorize aisle function to operate on batches of weight_windows
     vectorized_aisle = jax.vmap(aisle, in_axes=(0, None, None), out_axes=0)
 
-    # Compute the results for all windows in a vectorized manner
-    ea_windowed = vectorized_aisle(weight_windows, alphas, oles)
+    # Compute the results for the specified windows
+    updates = vectorized_aisle(weight_windows, alphas, oles)
 
-    return ea_windowed
+    # Create a new array with the updates
+    ea_windowed_updated = jnp.concatenate([window_zeros, updates], axis=0)
+
+    return ea_windowed_updated
 
 
-@partial(jit, static_argnums=(1,))
+@partial(jit, static_argnums=(1, 2))
 def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     """Creates moving window segments from the provided array.
 
@@ -248,7 +251,7 @@ def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     The function computes the starting indices for each window and uses the `vmap` function, along with
     `jax.lax.dynamic_slice`, to efficiently extract each window segment from the input array.
     """
-    starts = jnp.arange(array.shape[0] - size + 1)
+    starts = jnp.arange(array.shape[0] - size)
     return vmap(lambda start: jax.lax.dynamic_slice(array, (start, 0), (size, array.shape[1])))(starts)
 
 
