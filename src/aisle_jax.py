@@ -233,7 +233,7 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     return ea_windowed_updated
 
 
-@partial(jit, static_argnums=(1, 2))
+@partial(jit, static_argnums=(0, 1))
 def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     """Creates moving window segments from the provided array.
 
