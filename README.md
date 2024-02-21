@@ -14,10 +14,12 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 The **AIXLES** package allows the user to perform the following tasks:
 * Use pythonic implementation of AISLE
 * Use JAX acelereated implementation of AISLE
-* A sample use with linear neural unit
-* Easy start usage examples
+* A sample use with linear and quadratic neural unit
+* Easy start sample usage examples in `.ipynb`
 
-## Sample Usage
+## Examples
+In examples folder we provide code for sample usage of AISLEX for anomaly detection on artificial and real data. Our examples include:
+
 * [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
 * [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
 * [Example 2 ECG Ventricual Tachycardia](./examples/Example_2_ECG_Ventricual_Tachycardia.ipynb)
@@ -35,7 +37,7 @@ This repository is builing on top of many published papers, for sample usage you
 
 
 ## Requirements
-The code has been tested with JAX 0.3.7, rest of the requirements is available in [requirements.txt](requirements.txt).
+The code has been tested with JAX 0.4.23, rest of the requirements is available in [requirements.txt](requirements.txt).
 
 
 ## How To Install
@@ -47,6 +49,8 @@ git clone https://github.com/carnosi/AISLEX.git
 ```
 
 ## References
+The algorithm foundation builds upon following papers:
+
 [1] I. Bukovsky, “Learning Entropy: Multiscale Measure for Incremental Learning,” Entropy, vol. 15, no. 10, pp. 4159–4187, Sep. 2013, doi: 10.3390/e15104159.
 
 [2] I. Bukovsky, J. Vrba, and M. Cejnek, “Learning Entropy: A Direct Approach,” in IEEE International Joint Conference on Neural Networks, Vancouver: IEEE, Feb. 2016.
