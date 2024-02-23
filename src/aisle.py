@@ -15,6 +15,8 @@ __status__ = "beta"
 
 __python__ = "3.9.0"
 
+import os
+
 import numpy as np
 
 
@@ -47,7 +49,7 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarr
     Entropy, vol. 21, no. 2, p. 166, Feb. 2019, doi: 10.3390/e21020166.
 
     """
-    # Convert inputs to numpy arrays in case user inputs list or tuple.
+    # Convert inputs to numpy arrays for unified processing
     weights = np.array(weights)
     alphas = np.array(alphas)
     oles = np.array(oles)
@@ -58,7 +60,7 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> np.ndarr
     nw = weights.shape[1]
     # Get number of alphas
     nalpha = alphas.shape[0]
-    # Prepare memory space for learning entropy
+    # Prepare learning entropy space
     ea = np.zeros(len(oles))
     # Counter for LE position
     i = 0
@@ -110,15 +112,16 @@ def aisle_window(window: int, weights: np.ndarray, alphas: np.ndarray, oles: np.
     alphas = np.array(alphas)
     oles = np.array(oles)
 
-    # Prepare holder for learning entropy window shift output
+    # Prepare learning entropy window shift output
     ea_windowed = np.zeros((weights.shape[0], oles.shape[0]))
     # Iterate over weights of a window
     for shift in range(window, weights.shape[0]):
-        # Evaluate learning entropy for given weindow
+        # Evaluate learning entropy for given window
         ea_windowed[shift, :] = aisle(weights[shift - window : shift], alphas, oles)
     return ea_windowed
 
 
 if __name__ == "__main__":
-    MSG = "The aisle.py is not meant to be run as a script. Do see examples for propper usage."
+    filename = os.path.basename(__file__)
+    MSG = f"The {filename} is not meant to be run as a script."
     raise OSError(MSG)

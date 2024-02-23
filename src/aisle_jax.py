@@ -18,6 +18,7 @@ __status__ = "alpha"
 
 __python__ = "3.9.0"
 
+import os
 from functools import partial
 
 import jax
@@ -256,5 +257,6 @@ def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
 
 
 if __name__ == "__main__":
-    MSG = "aisle_jax.py is not meant to be run as a script. Do see examples for propper usage."
+    filename = os.path.basename(__file__)
+    MSG = f"The {filename} is not meant to be run as a script."
     raise OSError(MSG)
