@@ -62,6 +62,8 @@ def aisle(weights: np.ndarray, alphas: np.ndarray, oles: np.ndarray) -> jnp.ndar
     # LE weights evaluation
     ea = _ole_loop_(weights, alphas, oles, scaler)
 
+    ea = ea.reshape(1, -1)
+
     return ea
 
 
@@ -217,33 +219,35 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     oles = jnp.array(oles)
 
     # Prepare holder for learning entropy window shift output
-    window_zeros = jnp.zeros((window, oles.shape[0]))
+    ea_windowed = jnp.zeros((weights.shape[0], oles.shape[0]))
 
     # Prepare windows to be processed
     weight_windows = moving_window(weights, window)
 
-    # Vectorize aisle function to operate on batches of weight_windows
-    vectorized_aisle = jax.vmap(aisle, in_axes=(0, None, None), out_axes=0)
+    def body(shift, arg):
+        ea_windowed, weight_windows = arg
+        ea = aisle(weight_windows[shift], alphas, oles)
+        ea_windowed = jax.lax.dynamic_update_slice(ea_windowed, ea, (shift + window, 0))
+        return (ea_windowed, weight_windows)
 
-    # Compute the results for the specified windows
-    updates = vectorized_aisle(weight_windows, alphas, oles)
+    (
+        ea_windowed,
+        _,
+    ) = jax.lax.fori_loop(0, weight_windows.shape[0], body, (ea_windowed, weight_windows))
 
-    # Create a new array with the updates
-    ea_windowed_updated = jnp.concatenate([window_zeros, updates], axis=0)
-
-    return ea_windowed_updated
+    return ea_windowed
 
 
-@partial(jit, static_argnums=(0, 1))
-def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
+@partial(jit, static_argnums=(1,))
+def moving_window(weights: jnp.ndarray, window_size: int) -> jnp.ndarray:
     """Creates moving window segments from the provided array.
 
     This function generates segments of the specified window size from the input array. It's designed for
     high-speed processing but requires significant memory, especially for large datasets.
 
     Args:
-        array: A 2D jax.numpy array from which moving windows are to be generated.
-        size: The size of each moving window.
+        weights: A 2D jax.numpy array from which moving windows are to be generated.
+        window_size: The size of each moving window.
 
     Returns:
         A 3D jax.numpy array where each slice along the first dimension represents a moving window of
@@ -252,8 +256,10 @@ def moving_window(array: jnp.ndarray, size: int) -> jnp.ndarray:
     The function computes the starting indices for each window and uses the `vmap` function, along with
     `jax.lax.dynamic_slice`, to efficiently extract each window segment from the input array.
     """
-    starts = jnp.arange(array.shape[0] - size)
-    return vmap(lambda start: jax.lax.dynamic_slice(array, (start, 0), (size, array.shape[1])))(starts)
+    starts = jnp.arange(weights.shape[0] - window_size + 1)
+    return vmap(lambda start: jax.lax.dynamic_slice(weights, (start, 0), (window_size, weights.shape[1])))(
+        starts
+    )
 
 
 if __name__ == "__main__":
