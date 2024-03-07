@@ -23,6 +23,7 @@ In examples folder we provide code for sample usage of AISLEX for anomaly detect
 * [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
 * [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
 * [Example 2 ECG Ventricual Tachycardia](./examples/Example_2_ECG_Ventricual_Tachycardia.ipynb)
+* [Example 3 Performance Benchmark](./examples/Example_3_Performance_comparison.ipynb)
 
 ## Appliaction Examples
 This repository is builing on top of many published papers, for sample usage you can explore any of the below:
