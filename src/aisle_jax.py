@@ -11,7 +11,7 @@ __copyright__ = "<2024> <University Southern Bohemia> <Czech Technical Universit
 __credits__ = ["Ivo Bukovsky", "Czech Technical University"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz", "ondrej.budik@fs.cvut.cz"]
 __status__ = "alpha"
@@ -89,19 +89,19 @@ def _ole_loop_(
     Returns:
         A 1D jax.numpy array containing the evaluated LE values for each order specified in `oles`.
     """
-    # Prepare the output array of learning entropy. Size matches LE orders.
-    ea = jnp.zeros(oles.shape[0])
-    # loop over all OLES and get learning entropy
-    pos = 0
-    step = 0
-    for ole in oles:
-        # Calculate dws for given OLE order. Oles usually are not many, no need to recompile for now.
+
+    def body_fn(carry: tuple[jnp.ndarray, int], ole: int) -> tuple[tuple[jnp.ndarray, int], int]:
+        weights, step = carry
         weights, step, _ = _weight_ole_(weights, ole, step)
-        # Evaluate learning entropy for given OLE
         one_ea = _ole_(weights, alphas, scaler, ole)
-        # Save it to array and move to the next one
-        ea = ea.at[pos].set(one_ea)
-        pos = pos + 1
+        return (weights, step), one_ea
+
+    # Initial carry values
+    initial_carry = (weights, 0)
+
+    # Use jax.lax.scan for the loop
+    _, ea = jax.lax.scan(body_fn, initial_carry, oles)
+
     return ea
 
 
@@ -156,12 +156,16 @@ def _alpha_loop_(alphas: jnp.ndarray, absdw: jnp.ndarray, meanabsdw: jnp.ndarray
         A jax.numpy array representing the evaluated alpha values.
     """
 
-    def body(shift, arg):
-        n_alpha = arg
-        n_alpha = n_alpha + jnp.nansum(absdw > alphas[shift] * meanabsdw)
-        return n_alpha
+    def single_alpha_evaluation(alpha: int) -> jnp.array:
+        return jnp.nansum(absdw > alpha * meanabsdw)
 
-    return jax.lax.fori_loop(0, alphas.shape[0], body, (0))
+    # Use jax.vmap to vectorize the single_alpha_evaluation function
+    n_alpha_per_alpha = jax.vmap(single_alpha_evaluation)(alphas)
+
+    # Sum the results to get a single value
+    n_alpha = jnp.sum(n_alpha_per_alpha)
+
+    return n_alpha
 
 
 @jit
@@ -218,22 +222,22 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     alphas = jnp.array(alphas)
     oles = jnp.array(oles)
 
-    # Prepare holder for learning entropy window shift output
-    ea_windowed = jnp.zeros((weights.shape[0], oles.shape[0]))
-
     # Prepare windows to be processed
     weight_windows = moving_window(weights, window)
 
-    def body(shift, arg):
-        ea_windowed, weight_windows = arg
-        ea = aisle(weight_windows[shift], alphas, oles)
-        ea_windowed = jax.lax.dynamic_update_slice(ea_windowed, ea, (shift + window, 0))
-        return (ea_windowed, weight_windows)
+    # Define the function to process each window shift
+    def process_window(weight_window):
+        return aisle(weight_window, alphas, oles)
 
-    (
-        ea_windowed,
-        _,
-    ) = jax.lax.fori_loop(0, weight_windows.shape[0], body, (ea_windowed, weight_windows))
+    # Vectorize the function over weight_windows
+    # ea_windowed_updates = vmap(process_window)(weight_windows) #vmap shows worse perf than lax.map
+    ea_windowed_updates = jax.lax.map(process_window, weight_windows)
+    # Get rid of the extra dimension caused by parallel processing
+    ea_windowed_updates = ea_windowed_updates.squeeze(axis=1)
+
+    # Concatenate with zero padding to match the input size
+    zero_padding = jnp.zeros((window - 1, ea_windowed_updates.shape[1]))
+    ea_windowed = jnp.vstack([zero_padding, ea_windowed_updates])
 
     return ea_windowed
 
