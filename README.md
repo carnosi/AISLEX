@@ -18,7 +18,7 @@ The **AIXLES** package allows the user to perform the following tasks:
 * Easy start sample usage examples in `.ipynb`
 
 ## How To Install
-Currently we provide only Github repo, PiPy support will be released later.
+Currently we provide only Github repo, PiPy distribution will be released later.
 
 ### From source / GitHub
 ```bash
