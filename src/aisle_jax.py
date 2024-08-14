@@ -242,6 +242,7 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     return ea_windowed
 
 
+@partial(jit, static_argnums=(0, 2, 3, 4))
 def aisle_window_chunked(
     window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: jnp.ndarray, chunk_size: int
 ) -> jnp.ndarray:
@@ -259,25 +260,51 @@ def aisle_window_chunked(
         A 2D jax.numpy array where each row contains the Learning Entropy values for the corresponding window
         of weights. The number of columns corresponds to the number of orders in `oles`.
     """
-    n_chunks = (weights.shape[0] + chunk_size - 1) // chunk_size  # Calculate the number of chunks
+
+    def moving_window_chunk(
+        weights: jnp.ndarray, window_size: int, start_idx: int, num_windows: int
+    ) -> jnp.ndarray:
+        """Creates a chunk of moving window segments from the provided array."""
+        starts = jnp.arange(start_idx, start_idx + num_windows)
+        return vmap(
+            lambda start: jax.lax.dynamic_slice(weights, (start, 0), (window_size, weights.shape[1]))
+        )(starts)
+
+    def process_chunk(start_idx, num_windows):
+        # Generate the windows for this chunk
+        weight_windows_chunk = moving_window_chunk(weights, window, start_idx, num_windows)
+
+        # Process each window in the chunk using aisle
+        result_chunk = vmap(lambda w: aisle(w, alphas, oles))(weight_windows_chunk)
+
+        return result_chunk
+
+    num_windows = weights.shape[0] - window + 1
     results = []
 
-    for i in range(n_chunks):
-        start_idx = i * chunk_size
-        end_idx = min((i + 1) * chunk_size + window - 1, weights.shape[0])
-        chunk_weights = weights[start_idx:end_idx]
+    # Process the weights in chunks
+    for start_idx in range(0, num_windows, chunk_size):
+        end_idx = min(start_idx + chunk_size, num_windows)
+        num_windows_in_chunk = end_idx - start_idx
 
-        # Process the current chunk
-        result_chunk = aisle_window(window, chunk_weights, alphas, oles)
+        # Process the current chunk of windows
+        result_chunk = process_chunk(start_idx, num_windows_in_chunk)
+        results.append(result_chunk)
 
-        # Keep only the valid part of the result to avoid overlaps
-        if i == 0:
-            results.append(result_chunk)
-        else:
-            results.append(result_chunk[window - 1 :])
+    jax.block_until_ready(results)
+    # Concatenate all the results into a single array
+    ea_windowed = jnp.vstack(results)
+    # print(ea_windowed.shape, ea_windowed[0, 0, 0])
 
-    # Concatenate all results into a single array
-    return jnp.vstack(results)
+    # Zero padding to match the original weights size
+    zero_padding = jnp.zeros((window - 1, ea_windowed.shape[1], ea_windowed.shape[2]))
+    # print(zero_padding.shape)
+    ea_windowed = jnp.vstack([zero_padding, ea_windowed])
+    # print(ea_windowed.shape)
+    ea_windowed = jnp.squeeze(ea_windowed, axis=1)
+    # print(ea_windowed.shape)
+
+    return ea_windowed
 
 
 @partial(jit, static_argnums=(1,))
