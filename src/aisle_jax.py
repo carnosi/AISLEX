@@ -242,6 +242,44 @@ def aisle_window(window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: j
     return ea_windowed
 
 
+def aisle_window_chunked(
+    window: int, weights: jnp.ndarray, alphas: jnp.ndarray, oles: jnp.ndarray, chunk_size: int
+) -> jnp.ndarray:
+    """Evaluates Approximate Individual Sample Learning Entropy (AISLE) over a selected window using chunking.
+
+    Args:
+        window: The size of the window over which to evaluate the Learning Entropy.
+        weights: A 2D jax.numpy array of weights, where each row corresponds to the weights at a particular
+                iteration of the learning process.
+        alphas: A 1D jax.numpy array of thresholds for the sensitivity of the Learning Entropy calculation.
+        oles: A 1D jax.numpy array of the orders of Learning Entropy to calculate.
+        chunk_size: The number of windows to process per chunk for memory efficiency.
+
+    Returns:
+        A 2D jax.numpy array where each row contains the Learning Entropy values for the corresponding window
+        of weights. The number of columns corresponds to the number of orders in `oles`.
+    """
+    n_chunks = (weights.shape[0] + chunk_size - 1) // chunk_size  # Calculate the number of chunks
+    results = []
+
+    for i in range(n_chunks):
+        start_idx = i * chunk_size
+        end_idx = min((i + 1) * chunk_size + window - 1, weights.shape[0])
+        chunk_weights = weights[start_idx:end_idx]
+
+        # Process the current chunk
+        result_chunk = aisle_window(window, chunk_weights, alphas, oles)
+
+        # Keep only the valid part of the result to avoid overlaps
+        if i == 0:
+            results.append(result_chunk)
+        else:
+            results.append(result_chunk[window - 1 :])
+
+    # Concatenate all results into a single array
+    return jnp.vstack(results)
+
+
 @partial(jit, static_argnums=(1,))
 def moving_window(weights: jnp.ndarray, window_size: int) -> jnp.ndarray:
     """Creates moving window segments from the provided array.
