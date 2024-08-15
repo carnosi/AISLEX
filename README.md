@@ -93,7 +93,7 @@ In examples folder we provide code for sample usage of AISLEX for anomaly detect
 * [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
 * [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
 * [Example 2 ECG Ventricual Tachycardia](./examples/Example_2_ECG_Ventricual_Tachycardia.ipynb)
-* [Example 3 Polarization Anomaly Detection](./examples/Example_4_Polarization_Anomaly_Detection.ipynb)
+* [Example 3 Polarization Anomaly Detection](./examples/Example_3_Polarization_Anomaly_Detection.ipynb)
 * [Performance Benchmark](./examples/Performance_comparison.ipynb)
 
 ## Requirements
