@@ -11,7 +11,7 @@ __copyright__ = "<2024> <University Southern Bohemia> <Czech Technical Universit
 __credits__ = ["Ivo Bukovsky", "Czech Technical University"]
 
 __license__ = "MIT (X11)"
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 __maintainer__ = ["Ondrej Budik"]
 __email__ = ["obudik@prf.jcu.cz", "ondrej.budik@fs.cvut.cz"]
 __status__ = "alpha"
