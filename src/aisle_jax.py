@@ -273,14 +273,13 @@ def aisle_window_chunked(
     def process_chunk(start_idx, num_windows):
         # Generate the windows for this chunk
         weight_windows_chunk = moving_window_chunk(weights, window, start_idx, num_windows)
-
         # Process each window in the chunk using aisle
         result_chunk = vmap(lambda w: aisle(w, alphas, oles))(weight_windows_chunk)
 
         return result_chunk
 
     num_windows = weights.shape[0] - window + 1
-    results = []
+    ea_windowed = jnp.zeros((weights.shape[0], 1, len(oles)))
 
     # Process the weights in chunks
     for start_idx in range(0, num_windows, chunk_size):
@@ -289,20 +288,9 @@ def aisle_window_chunked(
 
         # Process the current chunk of windows
         result_chunk = process_chunk(start_idx, num_windows_in_chunk)
-        results.append(result_chunk)
+        ea_windowed = ea_windowed.at[start_idx + window - 1 : end_idx + window - 1, :, :].set(result_chunk)
 
-    jax.block_until_ready(results)
-    # Concatenate all the results into a single array
-    ea_windowed = jnp.vstack(results)
-    # print(ea_windowed.shape, ea_windowed[0, 0, 0])
-
-    # Zero padding to match the original weights size
-    zero_padding = jnp.zeros((window - 1, ea_windowed.shape[1], ea_windowed.shape[2]))
-    # print(zero_padding.shape)
-    ea_windowed = jnp.vstack([zero_padding, ea_windowed])
-    # print(ea_windowed.shape)
     ea_windowed = jnp.squeeze(ea_windowed, axis=1)
-    # print(ea_windowed.shape)
 
     return ea_windowed
 
