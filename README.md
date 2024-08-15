@@ -38,7 +38,7 @@ For single LE we can invoke The `aisle` function which returns the values in the
 * `oles` can be viewed as derivative values of weights to $n^{th}$ derivation.
 * `alphas` set sensitivity to behavior which is already considered anomalous compared to the current normal. Resulting LE value is the mean from all alphas.
 
-Single LE evaluation:
+#### Single LE evaluation:
 ```python
 # Generate random weights for example
 n_update_steps = 100 # Number of recorded weight updates
@@ -46,7 +46,7 @@ weight_count = 100
 weights = np.random.rand((n_update_steps, weight_count))
 
 oles = (1, 2) # Orders of Learning Entropy
-alphas = (6, 12, 15, 20) # Sensitivity of anomaly detection
+alphas = (6, 12, 13.5, 16.87) # Sensitivity of anomaly detection, can be int or float
 
 aisle_values = aisle(weights, alphas, oles)
 ```
@@ -54,7 +54,7 @@ For sliding window evaluation of historical data the LE can be evaluated in a ba
 
 In **JAX** implementation the batches are mapped by `jax.vmap` function, which can be memory heavy, as each batch is saved individually for further parallelized processing.
 
-Window LE evaluation:
+#### Window LE evaluation:
 ```python
 # Generate random weights for example
 n_update_steps = 1000 # Number of recorded weight updates
@@ -62,14 +62,33 @@ weight_count = 100
 weights = np.random.rand((n_update_steps, weight_count))
 
 oles = (1, 2) # Orders of Learning Entropy
-alphas = (6, 12, 15, 20) # Sensitivity of anomaly detection
+alphas = (6, 12, 13.5, 16.87) # Sensitivity of anomaly detection, can be int or float
 window_size = 100
 
-weight_updates = aisle_window(window_size, weights, alphas, oles)
+aisle_values = aisle_window(window_size, weights, alphas, oles)
+```
+
+##### Experimental features
+Experimental features are not fully tested and may sometimes even show reduced performance compared to the fully released one. Currently under experimental features you can find the following:
+* _Window chunk processing (JAX)_ - Allows users to find equillibrium between memory usage and execution speed by processing n windows at a given moment.
+
+_Window chunk processing_
+```python
+from src.aisle_jax import aisle_window_chunk
+
+# Generate random weights for example
+n_update_steps = 10000 # Number of recorded weight updates
+weight_count = 100
+weights = np.random.rand((n_update_steps, weight_count))
+window_chunk = 1000
+
+oles = (1, 2) # Orders of Learning Entropy
+alphas = (6, 12, 13.5, 16.87) # Sensitivity of anomaly detection, can be int or float
+aisle_values = aisle_window_chunk(window_size, weights, alphas, oles, window_chunk)
 ```
 
 ## Jupyter Examples
-In examples folder we provide code for sample usage of AISLEX for anomaly detection on artificial and real data. Our examples include:
+In examples folder we provide code for sample usage of AISLEX for anomaly detection on artificial and real data and performance benchmark between our JAX and NumPy implementation. The examples include:
 
 * [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
 * [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
