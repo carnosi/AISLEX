@@ -74,8 +74,8 @@ In examples folder we provide code for sample usage of AISLEX for anomaly detect
 * [Example 0 Artificial Signal](./examples/Example_0_Artificial_Signal.ipynb)
 * [Example 1 Dynamic System](./examples/Example_1_Dynamic_System.ipynb)
 * [Example 2 ECG Ventricual Tachycardia](./examples/Example_2_ECG_Ventricual_Tachycardia.ipynb)
-* [Example 3 Performance Benchmark](./examples/Example_3_Performance_comparison.ipynb)
-* [Example 4 Polarization Anomaly Detection](./examples/Example_4_Polarization_Anomaly_Detection.ipynb)
+* [Example 3 Polarization Anomaly Detection](./examples/Example_4_Polarization_Anomaly_Detection.ipynb)
+* [Performance Benchmark](./examples/Performance_comparison.ipynb)
 
 ## Requirements
 The code has been tested with JAX 0.4.23, rest of the requirements is available in [requirements.txt](requirements.txt).
