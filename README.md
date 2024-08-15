@@ -74,7 +74,7 @@ Experimental features are not fully tested and may sometimes even show reduced p
 
 _Window chunk processing_
 ```python
-from src.aisle_jax import aisle_window_chunk
+from src.aisle_jax import aisle_window_chunked
 
 # Generate random weights for example
 n_update_steps = 10000 # Number of recorded weight updates
@@ -84,7 +84,7 @@ window_chunk = 1000
 
 oles = (1, 2) # Orders of Learning Entropy
 alphas = (6, 12, 13.5, 16.87) # Sensitivity of anomaly detection, can be int or float
-aisle_values = aisle_window_chunk(window_size, weights, alphas, oles, window_chunk)
+aisle_values = aisle_window_chunked(window_size, weights, alphas, oles, window_chunk)
 ```
 
 ## Jupyter Examples
