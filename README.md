@@ -99,6 +99,32 @@ In examples folder we provide code for sample usage of AISLEX for anomaly detect
 ## Requirements
 The code has been tested with JAX 0.4.23, rest of the requirements is available in [requirements.txt](requirements.txt).
 
+## Tips & Tricks
+AISLEX relies on three hyperparameters for its evaluation. The optimal settings for these hyperparameters are always use-case specific, and there is no one-size-fits-all approach. Here are some tips to help you set up your anomaly detection pipeline effectively.
+
+### Window size
+The window size determines what the learning entropy will consider as normal behavior. Generally, you should set the window size longer than the longest expected anomaly. For example, if window=20 and your target anomaly usually lasts ~15 samples, a short window may bias AISLEX's detection, reducing the accuracy of anomaly identification.
+
+We generally recommend setting the window size to be at least 2$\times$ longer than the expected anomaly length.
+
+### Alpha sensitivity
+The alpha parameter ($\alpha$) determines what weight changes will be considered anomalous and can take any real number. The sensitivity of $\alpha$ can be understood in several ways:
+
+* The larger the value of $\alpha$, the larger the magnitudes of weight increment considered unusual.
+* The larger the value of $\alpha$, the less sensitive Learning Entropy (LE) is to data that do not correspond to the current dynamics learned by the model.
+* The larger the $\alpha$, the more unusual data samples in the signal will be detected.
+
+In general, we recommend using between 2-6 different alpha sensitivities to approximate the optimal alpha for your specific system and desired anomaly sensitivity.
+
+For initial setup, it is beneficial to have both clean and anomalous data available, allowing you to iterate toward the desired LE sensitivity.
+
+### Orders of Learning Entropy
+Orders of Learning Entropy (OLE) refer to the differential order of update changes, such as acceleration. Depending on the anomaly type and system response behavior, you should select the appropriate order or orders.
+
+For data from mechanical systems, we generally expect that orders 1-3 will capture most anomalous behavior. However, for complex systems, such as those involving polarization changes, higher orders between 6-8 may be more beneficial.
+
+You can experimentally determine the relevant OLEs relatively quickly, as the resulting LE will typically remain around 0 if the data do not contain relationships in higher orders.
+
 ## Application Examples
 This repository is builing on top of many published papers, for sample usage you can explore any of the below:
 
