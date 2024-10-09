@@ -97,7 +97,7 @@ In examples folder we provide code for sample usage of AISLEX for anomaly detect
 * [Performance Benchmark](./examples/Performance_comparison.ipynb)
 
 ## Requirements
-The code has been tested with JAX 0.4.23, rest of the requirements is available in [requirements.txt](requirements.txt).
+The code has been tested with **JAX 0.4.23**, rest of the requirements is available in [requirements.txt](requirements.txt).
 
 ## Tips & Tricks
 AISLEX relies on three hyperparameters for its evaluation. The optimal settings for these hyperparameters are always use-case specific, and there is no one-size-fits-all approach. Here are some tips to help you set up your anomaly detection pipeline effectively.
@@ -147,6 +147,23 @@ The algorithm foundation builds upon following papers:
 
 ## How To Cite
 If AISLEX has been useful in your research, please consider citing our article:
+IEEE:
 ```
-[TBD]
+[1] O. Budik, M. Novak, F. Sobieczky, and I. Bukovsky, “AISLEX: Approximate individual sample learning entropy with JAX,” SoftwareX, vol. 28, p. 101915, Dec. 2024, doi: 10.1016/j.softx.2024.101915.
+```
+BibTex:
+```
+@article{BUDIK2024101915,
+title = {AISLEX: Approximate individual sample learning entropy with JAX},
+journal = {SoftwareX},
+volume = {28},
+pages = {6},
+year = {2024},
+issn = {2352-7110},
+doi = {https://doi.org/10.1016/j.softx.2024.101915},
+url = {https://www.sciencedirect.com/science/article/pii/S2352711024002851},
+author = {Ondrej Budik and Milan Novak and Florian Sobieczky and Ivo Bukovsky},
+keywords = {Anomaly detection, Learning entropy, JAX, Machine learning weight evaluation},
+abstract = {We present AISLEX, an online anomaly detection module based on the Learning Entropy algorithm, a novel machine learning-based information measure that quantifies the learning effort of neural networks. AISLEX detects anomalous data samples when the learning entropy value is high. The module is designed to be readily usable, with both NumPy and JAX backends, making it suitable for various application fields. The NumPy backend is optimized for devices running Python3, prioritizing limited memory and CPU usage. In contrast, the JAX backend is optimized for fast execution on CPUs, GPUs, and TPUs but requires more computational resources. AISLEX also provides extensive implementation examples in Jupyter notebooks, utilizing in-parameter-linear-nonlinear neural architectures selected for their low data requirements, computational simplicity, convergence analyzability, and dynamical stability.}
+}
 ```
